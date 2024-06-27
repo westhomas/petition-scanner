@@ -134,6 +134,16 @@ def main(pdf_path, crop_area):
 if __name__ == "__main__":
     # read the pdf path file from the CLI arguments
 
+    # filename = ""
+    # text = ocr_image(Image.open(filename))
+    # print(text)
+    # data = extract_data_from_text(text)
+    # print(data)
+    # # print data to screen as if it was a csv line
+    # print(",".join([str(x) for x in data.values()]) + "," + os.path.basename(filename))
+    # sys.exit(0)
+
+
     pdf_path = sys.argv[1]
 
     # parse the crop area from the CLI arguments
