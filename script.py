@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+import re
 import sys
 
 import fitz  # PyMuPDF
@@ -49,7 +50,7 @@ def ocr_image(image):
                 "content": [
                     {
                         "type": "text",
-                        "text": "Please extract the text from the PNG image that is base64 encoded with utf-8. If you can't read the text, please say ERROR in your response and then explain more if you can.",
+                        "text": "Please extract the text from the PNG image that is base64 encoded with utf-8. Be sure to put each field's result on the same line as the label. A label should only be one word. If you can't read the text, please say ERROR in your response and then explain more if you can.",
                     },
                     {
                         "type": "image_url",
@@ -72,20 +73,29 @@ def camel_case(input_value):
     return ''.join(x for x in input_value.title() if x.isalnum())
 
 
+patterns = {
+    "First Name": r"FIRST:?\s*(?:\n)?\s*(.+)",
+    "Last Name": r"LAST:?\s*(?:\n)?\s*(.+)",
+    "ZIP": r"ZIP:?\s*(?:\n)?\s*(\d+)",
+    "Email": r"EMAIL:?\s*(?:\n)?\s*(\S+)",
+    "Phone": r"PHONE:?\s*(?:\n)?.*?([^\n]+)"
+}
+
 def extract_data_from_text(text):
     data = {}
-    lines = text.split('\n')
-    for line in lines:
-        if "FIRST" in line:
-            data['First Name'] = camel_case(line.split()[-1])
-        elif "LAST" in line:
-            data['Last Name'] = camel_case(line.split()[-1])
-        elif "ZIP" in line:
-            data['ZIP'] = line.split()[-1]
-        elif "EMAIL" in line:
-            data['Email'] = line.split()[-1].lower()
-        elif "PHONE" in line:
-            data['Phone'] = line.split()[-1]
+    for field, pattern in patterns.items():
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            print(f"{field}: {match.group(1)}")
+            data[field] = match.group(1)
+            if field == "Email":
+                data[field] = data[field].strip().lower().replace(" ", "")
+            elif field == "First Name" or field == "Last Name":
+                data[field] = camel_case(data[field].replace(" ", "").strip())
+            elif field == "Phone" or field == "ZIP":
+                data[field] = re.sub(r"\D", "", data[field])
+        else:
+            data[field] = None
     return data
 
 
@@ -104,10 +114,18 @@ def main(pdf_path, crop_area):
             log(f"Extracted: {text}")
             data = extract_data_from_text(text)
             data['Image'] = image_filename
-            log(f"Parsed: {data}")
+            log(f"Parsed: {data}\n\n")
             data_list.append(data)
         except Exception as e:
             print(f"{image_filename}\n============\n{e}\n\n")
+            data_list.append({
+                "First Name": None,
+                "Last Name": None,
+                "ZIP": None,
+                "Email": None,
+                "Phone": None,
+                "Image": image_filename
+            })
 
     df = pd.DataFrame(data_list)
     df.to_csv(output_csv, index=False)
