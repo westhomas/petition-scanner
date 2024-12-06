@@ -1,0 +1,16 @@
+*.pyc
+__pycache__
+*.egg-info
+.env*
+.idea
+.cache/
+*.DS_Store
+*.coverage
+*.noseids
+node_modules
+*.zip
+*.sql
+*.dump
+tmp
+staticfiles/
+supabase/
